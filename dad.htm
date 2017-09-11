@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DAD (Day After Day), what you have done, this week</title>
+
+<!-- embed style -->
+<style>
+#WEEK, #MON, #TU, #WE, #THU, #FRI{
+	border:0;color:blue;border-right: solid #ff0000;
+	padding-left:10px;padding-right:10px;float:left;
+	min-width:10em}
+#myweek::before{content:"week : "}
+#bestofWeek, #bestofDay, #normal{color:black;border-top: solid black;padding-top:0.8em;padding-bottom:0.8em;}/* min-height:5em */
+#WEEK #bestofWeek,#WEEK  #bestofDay,#WEEK  #normal{color:blue}/* for row name */
+#actions{margin-top:1em;}
+/* multiple template */
+#theheader{float:bottom}
+h1{
+font-size:1.1em;line-height:1em;
+padding-left:10px;padding-right:10px;float:left;
+}
+a:link, a:visited{
+padding-top:0.7em;
+display:inline-block;vertical-align:middle;
+color:blue;float:bottom}
+a:hover, a:active{text-decoration: none;}
+hr{clear:both}
+#thesider{float:left}
+button, p{margin-left:5px;margin-left:5px}
+/* design */
+#bestofWeek{background-color:#E9F2FB}/*yellow*/
+#bestofDay{background-color:#E9F2FB}/*#9df441*/
+#normal{background-color:#E9F2FB} /*#c1d8a9*/
+p{width:8em;word-wrap: break-word;}/* break-word, multiline text */
+/* CSS print : remove link and button */
+@media print{
+#actions{display:none;}
+a:link{display:none;}
+}
+</style>
+<!-- local lib -->
+<script src="lib/jquery-3.2.1.min.js"></script>
+<script src="lib/mustache-min.js"></script>
+<script src="lib/jquery-ui.js"></script>
+<!-- distant lib
+<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script> -->
+
+<!-- embed script -->
+<script>
+$(function(){// FUNCTIONS BEGIN
+
+//------ data ----------
+var target=$('body');
+var data={
+	"week":"",
+	"day":[
+		{"value":"MON","group":[
+			{"value":"bestofWeek","content":[]},
+			{"value":"bestofDay","content":[]},
+			{"value":"normal","content":[]}
+			]
+		},
+		{"value":"TU","group":[
+			{"value":"bestofWeek","content":[]},
+			{"value":"bestofDay","content":[]},
+			{"value":"normal","content":[]}                 
+			]
+		},
+		{"value":"WE","group":[
+			{"value":"bestofWeek","content":[]},
+			{"value":"bestofDay","content":[]},
+			{"value":"normal","content":[]}  // {"title":"export data json"},{"title":"create data"},{"title":"remove empty p"}               
+			]
+		},
+		{"value":"THU","group":[
+			{"value":"bestofWeek","content":[]},
+			{"value":"bestofDay","content":[]},
+			{"value":"normal","content":[]}  //  {"title":"same div same height"},{"title":"3 meetings"},{"title":"maj manuel FR"}              
+			]
+		},
+		{"value":"FRI","group":[
+			{"value":"bestofWeek","content":[]},
+			{"value":"bestofDay","content":[]},
+			{"value":"normal","content":[]}    // {"title":"user support"}, {"title":"meeting HTTPS"} , {"title":"word-wrap"},  {"title":"capture dom"}         
+			]
+		}		
+		]
+};	//--- V3 : default data if not yet localstorage {"title":"my title"},...
+var loadata="";//-- to load in template
+if (localStorage.getItem('mydata') !== null){// if localstorage exist : use data
+console.log('yet data');
+loaddata=JSON.parse(localStorage.getItem('mydata'));
+}
+else{
+loaddata=data;//initial
+}
+var filename=loaddata.week+".json";// data.week+
+
+var allday=["MON","TU","WE","THU","FRI"];// mapping json and dom : used to replace data in json index
+var allgroup=["bestofWeek","bestofDay","normal"];// mapping json and dom : used to replace data in json index
+//------- mustache js -----
+var tplContent="{{#day}}{{#.}}  <div id=\"{{value}}\" class=\"h\">{{value}}  {{#group}}  {{#.}}<div class=\"area h\" id=\"{{value}}\">    {{#content}} {{#.}}<p contentEditable=\"true\" >{{title}}<p/>{{/.}}{{/content}}  {{^content}}{{/content}}         </div>{{/.}}   {{/group}}  </div>  {{/.}}{{/day}}";// V3 display automatic group
+// ^content : no more need : <p></p> : with design_div()
+var tplSider="<div id=\"WEEK\"> <div id=\"myweek\" contentEditable=\"true\">&nbsp;{{week}}</div> <div id=\"bestofWeek\"><p>best of Week</p></div> <div id=\"bestofDay\"><p>best of day</p></div> <div id=\"normal\"><p>normal task :</p></div>  <div id=\"actions\" class=\"area\"><button id=\"save\" value=\"save\" >save</button>  <button id=\"create\" value=\"create\">create</button></div> </div>";
+var tplHeader="<h1>DAD (Day After Day) : what you have done this week</h1> <a href=\"#\" id=\"import\">import</a> <a href=\"#\" id=\"export\">export</a> <a href=\"#\" id=\"erase\">clear</a> <span class=\"myform\"><span>";
+var tplFrame="<div id=\"all\"> <div id=\"theheader\">{{> theheader}}</div><hr /> <div id=\"thesider\">{{> thesider}}</div> <div id=\"thecontent\">{{> thecontent}}</div></div>";
+var partials = {
+  theheader: tplHeader,
+  thesider: tplSider,
+  thecontent: tplContent
+};// specific for multiple partials  TOD0 add header : baseline + links
+
+//-------------- functions -------------
+function displayTemplate(){// initial display template : mustache, sortable, resize div
+	//var glueFrame = Mustache.render(tplContent,data);// just one template
+	var glueFrame = Mustache.render(tplFrame,loaddata,partials);// multiple template
+	target.html(glueFrame);
+	console.log('template');	
+		prepare_move();	//--- inside function or outside :
+};
+function prepare_move(){// sortable initial then update
+$("#all .area").sortable({// droppable area :  https://jqueryui.com/sortable/
+		  connectWith: ".area",// target direction
+		update: function(event, ui) {
+				 if (this === ui.item.parent()[0]) {// avoid to play twice
+				design_div();
+				}
+		}				
+});
+	console.log('sortable');	
+	design_div();// inside function or outside
+	$("p:empty").remove();// toa avoid empty p
+}	
+function log(){// update content
+	var toUpdate=$(this).text();
+	if(toUpdate == ""){// remove html and delete data
+		toUpdate="vide";
+		$(this).remove();// just here : sometimes, empty p stay ! <p></p>
+		$("p:empty").remove();
+				//--- teardown before for update
+	}
+	console.log("to update : "+toUpdate);// set action	
+				design_div();//------------------------------------------------------------------------------	
+
+}
+function create(){// create content
+	$("#WEEK #actions" ).append("<p contenteditable=\"true\">...</p>");
+	$("#WEEK #actions [contenteditable]").focus();// focus on last created
+	log();
+}
+function download() {// create and remove anchor : var filename, text
+    var element = document.createElement('a');// create anchor
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(loaddata)));
+    element.setAttribute('download', filename);//TODO if localstorage exist !
+    element.style.display = 'none';// invisible
+    document.body.appendChild(element);
+    element.click();// simulate
+    document.body.removeChild(element);// clean
+	return false;// due to href
+}// upload after, with update localstorage
+function design_div(){// resize div
+      //--- teardown
+	  $('#thecontent #bestofWeek').removeAttr('style');
+	  $('#thecontent #bestofDay').removeAttr('style');
+	  $('#thecontent #normal').removeAttr('style');
+
+	//--- design align div
+    $('#thecontent').each(function(){  // global area      
+
+      // Cache the highest : one per div type
+      var highestBoxW = 0;
+	  var highestBoxD= 0;
+	  var highestBoxN = 0;
+      
+	  //-------------- each div to align 
+      // Select and loop the elements you want to equalise
+      $('#bestofWeek', this).each(function(){        
+			// If this box is higher than the cached highest then store it
+			if($(this).height() > highestBoxW) {
+			  highestBoxW = $(this).height(); 
+        }      
+      });              
+      // Set the height of all those children to whichever was highest 
+      $('#bestofWeek',this).height(highestBoxW);
+	  
+      // Select and loop the elements you want to equalise
+      $('#bestofDay', this).each(function(){        
+			// If this box is higher than the cached highest then store it
+			if($(this).height() > highestBoxD) {
+			  highestBoxD = $(this).height(); 
+        }      
+      });              
+      // Set the height of all those children to whichever was highest 
+      $('#bestofDay',this).height(highestBoxD);	  
+	  
+      // Select and loop the elements you want to equalise
+      $('#normal', this).each(function(){        
+			// If this box is higher than the cached highest then store it
+			if($(this).height() > highestBoxN) {
+			  highestBoxN = $(this).height(); 
+        }      
+      });              
+      // Set the height of all those children to whichever was highest 
+      $('#normal',this).height(highestBoxN);	  
+           
+    });
+console.log("design resize ");// but before to update
+}
+function capture_dom(){// recreate json : num week and content by day and group : from (initial)data, not from loaddata
+		
+		historic=[];// use to remember path		
+		var children = $('#thecontent #bestofWeek,#thecontent #bestofDay,#thecontent #normal').children();// #WE #normal
+		
+		var thisweek=$('#myweek').text().trim();// space before to remove
+		//console.log('thisweek:'+thisweek);
+		data.week = thisweek;
+		
+	for(var i = 0;i < children.length;i++){
+		item = {};// json in array		
+		
+		var father=children.eq(i).parent();		
+		var theday=father.parent(".h").attr("id");//--- DAY
+		var thegroup=father.attr("id");//--- GROUP
+		
+		if(historic.length === 0){		
+		var myloop=[];		
+		//console.log("BEGIN for day "+data.day[allday.indexOf(theday)].value+" and group "+data.day[allday.indexOf(theday)].group[allgroup.indexOf(thegroup)].value+" push text : "+children.eq(i).text());
+		historic.push(theday+"-"+thegroup);//--- add historic		
+		}
+		else if(historic.indexOf(theday+"-"+thegroup)!="-1"){// in array
+		// add in exitent array
+		//console.log("BIS for day "+data.day[allday.indexOf(theday)].value+" and group "+data.day[allday.indexOf(theday)].group[allgroup.indexOf(thegroup)].value+" push text : "+children.eq(i).text());
+		}
+		else{
+		var myloop=[];// create new array !!! (not shared array beetween all "day-group"		
+		//console.log("NEW for day "+data.day[allday.indexOf(theday)].value+" and group "+data.day[allday.indexOf(theday)].group[allgroup.indexOf(thegroup)].value+" push text : "+children.eq(i).text());
+		historic.push(theday+"-"+thegroup);//--- add historic
+		}
+		
+		item ["title"] = children.eq(i).text();// inside json
+		myloop.push(item);// push json in array
+		data.day[allday.indexOf(theday)].group[allgroup.indexOf(thegroup)].content=myloop;// TARGET to : push final array [{}] in json				
+	}
+	
+	//console.log("size: "+children.length);// count p not empty
+	//console.log("historic : "+historic);// OK
+	//console.log("loop : "+JSON.stringify(myloop));
+		console.log("data "+JSON.stringify(data));		
+		localStorage.setItem('mydata', JSON.stringify(data));// save in browser localstorage
+				location.reload();// time to reload localstorage -> don't use for an automatic update
+}
+function erase(){// remove localstorage : replace with initial data !
+        localStorage.removeItem('mydata');
+		location.reload();// time to reload localstorage
+		displayTemplate();		
+}
+function myimportForm(){// display form : $("#WEEK #normal") <br />
+	$(".myform").append("&nbsp;<input class=\"myupload\" type=\"file\" accept=\"text/plain\" name=\"myupload\" id=\"myupload\"/>");// to hide after use	
+	// display with link when click
+	return false;// due to href
+}
+function myimportScript(){
+//alert("change !");
+var fileInput = $(this)[0];
+var file = fileInput.files[0];
+console.log("received");
+
+var reader = new FileReader();
+	reader.onload = function(){
+		  var text = reader.result;
+		  //console.log("read:"+reader.result.substring(0, 200));// reader.result.substring(0, 200)
+		  localStorage.setItem('mydata',text);
+		  		location.reload();// time to reload localstorage
+				displayTemplate();
+	};
+reader.readAsText(file);
+return false;// due to href
+// reload here : KO
+}
+	
+//------------ controller ---------
+//--- hook avoid conflict : draggable+contenteditable : not usefull
+//onfocus ="this.parentNode.draggable = false;";// onclick or onfocus : left click, select-all then edit
+//onblur="this.parentNode.draggable = true;";	
+
+$(document).ready(displayTemplate);// include in this :
+	//$(document).ready(prepare_move);
+	//$(document).ready(design_div);
+target.on('blur','p',log);// capture edition event : continue inside or outside
+	//target.on('blur','p',design_div);
+target.on('click','#create',create);
+target.on('click','#export',download);
+target.on('click','#import',myimportForm);// import form
+target.on('change','#myupload',myimportScript);// import traitment
+target.on('click','#erase',erase);
+target.on('click','#save',capture_dom);//--- TODO replace with specific update
+
+});//--- FUNCTIONS END
+</script>
+
+</head>
+<body>
+
+</body></html>
